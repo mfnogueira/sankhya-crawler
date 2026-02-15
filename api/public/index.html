@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sankhya Docs Assistant</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header .logo {
+      width: 36px;
+      height: 36px;
+      background: #3b82f6;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+      color: white;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    header span {
+      font-size: 12px;
+      color: #94a3b8;
+      background: #334155;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message {
+      max-width: 780px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      gap: 12px;
+    }
+
+    .message.user { justify-content: flex-end; }
+
+    .message .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .message.assistant .avatar {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .message.user .avatar {
+      background: #6366f1;
+      color: white;
+      order: 1;
+    }
+
+    .bubble {
+      padding: 12px 16px;
+      border-radius: 12px;
+      line-height: 1.6;
+      font-size: 14px;
+      overflow-wrap: break-word;
+    }
+
+    .message.user .bubble {
+      background: #6366f1;
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant .bubble {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-bottom-left-radius: 4px;
+    }
+
+    .bubble pre {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 12px;
+      overflow-x: auto;
+      margin: 8px 0;
+      font-size: 13px;
+    }
+
+    .bubble code {
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+    }
+
+    .bubble p { margin: 6px 0; }
+    .bubble ul, .bubble ol { margin: 6px 0; padding-left: 20px; }
+    .bubble h1, .bubble h2, .bubble h3 { margin: 10px 0 4px; color: #93c5fd; }
+    .bubble strong { color: #93c5fd; }
+    .bubble a { color: #60a5fa; }
+
+    .sources {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #334155;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .sources a {
+      color: #60a5fa;
+      text-decoration: none;
+    }
+
+    .sources a:hover { text-decoration: underline; }
+
+    .cached-badge {
+      display: inline-block;
+      font-size: 10px;
+      background: #065f46;
+      color: #6ee7b7;
+      padding: 1px 6px;
+      border-radius: 3px;
+      margin-left: 6px;
+    }
+
+    .typing {
+      display: flex;
+      gap: 4px;
+      padding: 4px 0;
+    }
+
+    .typing span {
+      width: 8px;
+      height: 8px;
+      background: #64748b;
+      border-radius: 50%;
+      animation: bounce 1.4s infinite;
+    }
+
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    .error-bubble {
+      background: #451a1a;
+      border: 1px solid #7f1d1d;
+      color: #fca5a5;
+    }
+
+    #input-area {
+      background: #1e293b;
+      border-top: 1px solid #334155;
+      padding: 16px 24px;
+    }
+
+    #input-area form {
+      max-width: 780px;
+      margin: 0 auto;
+      display: flex;
+      gap: 10px;
+    }
+
+    #input-area input {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #e2e8f0;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    #input-area input:focus {
+      border-color: #3b82f6;
+    }
+
+    #input-area input::placeholder { color: #64748b; }
+
+    #input-area button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    #input-area button:hover { background: #2563eb; }
+    #input-area button:disabled { background: #475569; cursor: not-allowed; }
+
+    .welcome {
+      text-align: center;
+      color: #94a3b8;
+      margin: auto;
+      max-width: 500px;
+    }
+
+    .welcome h2 { color: #e2e8f0; margin-bottom: 8px; font-size: 20px; }
+    .welcome p { margin-bottom: 16px; font-size: 14px; }
+
+    .welcome .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .welcome .suggestions button {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .welcome .suggestions button:hover {
+      border-color: #3b82f6;
+      color: #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">S</div>
+    <h1>Sankhya Docs Assistant</h1>
+    <span>GPT-4o-mini + RAG</span>
+  </header>
+
+  <div id="chat">
+    <div class="welcome" id="welcome">
+      <h2>Como posso ajudar?</h2>
+      <p>Pergunte sobre a documentação Sankhya Developer: Jape, SankhyaJS, Add-ons, SDK, dicionário de dados e mais.</p>
+      <div class="suggestions">
+        <button onclick="askSuggestion(this)">Como abrir uma sessão no Jape?</button>
+        <button onclick="askSuggestion(this)">O que é o Add-on Studio?</button>
+        <button onclick="askSuggestion(this)">Como criar um botão de ação?</button>
+        <button onclick="askSuggestion(this)">Como usar o SankhyaJS?</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="input-area">
+    <form id="form">
+      <input type="text" id="question" placeholder="Pergunte sobre a documentação Sankhya..." autocomplete="off" autofocus>
+      <button type="submit" id="send-btn">Enviar</button>
+    </form>
+  </div>
+
+  <script>
+    const chat = document.getElementById('chat');
+    const form = document.getElementById('form');
+    const input = document.getElementById('question');
+    const sendBtn = document.getElementById('send-btn');
+    const welcome = document.getElementById('welcome');
+
+    function askSuggestion(btn) {
+      input.value = btn.textContent;
+      form.dispatchEvent(new Event('submit'));
+    }
+
+    function addMessage(role, content, extra) {
+      if (welcome) welcome.remove();
+
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.textContent = role === 'user' ? 'U' : 'S';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+
+      if (role === 'assistant' && extra) {
+        let html = parseMarkdown(content);
+
+        if (extra.cached) {
+          html += '<span class="cached-badge">cache</span>';
+        }
+
+        if (extra.sources && extra.sources.length) {
+          html += '<div class="sources"><strong>Fontes:</strong><br>';
+          extra.sources.forEach(s => {
+            html += `<a href="${s.url}" target="_blank">${s.title}</a><br>`;
+          });
+          html += '</div>';
+        }
+
+        bubble.innerHTML = html;
+      } else {
+        bubble.textContent = content;
+      }
+
+      div.appendChild(avatar);
+      div.appendChild(bubble);
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+
+      return div;
+    }
+
+    function addTyping() {
+      if (welcome) welcome.remove();
+
+      const div = document.createElement('div');
+      div.className = 'message assistant';
+      div.id = 'typing';
+
+      div.innerHTML = `
+        <div class="avatar">S</div>
+        <div class="bubble">
+          <div class="typing"><span></span><span></span><span></span></div>
+        </div>
+      `;
+
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function removeTyping() {
+      const el = document.getElementById('typing');
+      if (el) el.remove();
+    }
+
+    function parseMarkdown(text) {
+      // Code blocks
+      text = text.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+      // Inline code
+      text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+      // Bold
+      text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      // Headers
+      text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      // Lists
+      text = text.replace(/^- (.+)$/gm, '<li>$1</li>');
+      text = text.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+      // Links
+      text = text.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>');
+      // Paragraphs
+      text = text.replace(/\n\n/g, '</p><p>');
+      text = '<p>' + text + '</p>';
+      text = text.replace(/<p><\/p>/g, '');
+
+      return text;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const question = input.value.trim();
+      if (!question) return;
+
+      addMessage('user', question);
+      input.value = '';
+      sendBtn.disabled = true;
+      addTyping();
+
+      try {
+        const res = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question }),
+        });
+
+        const data = await res.json();
+        removeTyping();
+
+        if (res.ok) {
+          addMessage('assistant', data.answer, {
+            sources: data.sources,
+            cached: data.cached,
+          });
+        } else {
+          addMessage('assistant', data.message || 'Erro ao processar sua pergunta.', {});
+        }
+      } catch (err) {
+        removeTyping();
+        addMessage('assistant', 'Erro de conexão com o servidor.', {});
+      }
+
+      sendBtn.disabled = false;
+      input.focus();
+    });
+  </script>
+</body>
+</html>

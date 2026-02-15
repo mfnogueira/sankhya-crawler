@@ -1,0 +1,16 @@
+# Credenciais
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+api/node_modules/
+
+# Dados coletados
+output/
+
+# Claude
+.claude/

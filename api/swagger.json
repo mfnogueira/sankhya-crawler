@@ -1,0 +1,122 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sankhya Docs API",
+    "description": "API de consulta à documentação Sankhya Developer com RAG (Qdrant + GPT-4o-mini)",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "http://localhost:3000", "description": "Local" }
+  ],
+  "paths": {
+    "/api/ask": {
+      "post": {
+        "summary": "Fazer uma pergunta sobre a documentação Sankhya",
+        "description": "Busca contexto relevante no Qdrant e gera resposta via GPT-4o-mini. Inclui guardrail de tópico e cache.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["question"],
+                "properties": {
+                  "question": {
+                    "type": "string",
+                    "example": "Como abrir uma sessão no Jape?"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resposta gerada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "answer": {
+                      "type": "string",
+                      "description": "Resposta gerada pelo modelo"
+                    },
+                    "sources": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "title": { "type": "string" },
+                          "url": { "type": "string" },
+                          "category": { "type": "string" }
+                        }
+                      }
+                    },
+                    "cached": {
+                      "type": "boolean",
+                      "description": "Se a resposta veio do cache"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Pergunta inválida ou fora do tópico",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { "type": "string", "enum": ["invalid_request", "off_topic"] },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "summary": "Status da API e conectividade com Qdrant",
+        "responses": {
+          "200": {
+            "description": "API saudável",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "qdrant": {
+                      "type": "object",
+                      "properties": {
+                        "status": { "type": "string" },
+                        "points": { "type": "integer" },
+                        "collection": { "type": "string" }
+                      }
+                    },
+                    "cache": {
+                      "type": "object",
+                      "properties": {
+                        "hits": { "type": "integer" },
+                        "misses": { "type": "integer" },
+                        "keys": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
