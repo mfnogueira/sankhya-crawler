@@ -65,7 +65,7 @@ export async function searchSections(question, filters = {}) {
     with_payload: true,
   });
 
-  return results.map((r) => ({
+  return results.points.map((r) => ({
     score: r.score,
     text: r.payload.text,
     doc_title: r.payload.doc_title,
