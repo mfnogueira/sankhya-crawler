@@ -42,3 +42,5 @@ app.listen(PORT, () => {
   console.log(`Chat UI em http://localhost:${PORT}`);
   console.log(`Swagger UI em http://localhost:${PORT}/api-docs`);
 });
+
+export default app;
