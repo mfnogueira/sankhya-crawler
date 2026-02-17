@@ -1,11 +1,13 @@
 """Parsing compartilhado de markdown da documentação Sankhya."""
 
+import json
 import re
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 URLS_FILE = Path("urls.txt")
 OUTPUT_DIR = Path("output")
+METADATA_DIR = Path("metadata")
 BASE_URL = "https://developer.sankhya.com.br/docs"
 
 # ── Mapeamento slug → categoria (extraído do menu lateral) ──────────
@@ -208,6 +210,14 @@ def parse_markdown(filepath: Path, slug: str, url: str) -> dict:
     }
 
 
+def load_metadata(slug: str) -> dict:
+    """Carrega metadados extraídos para um documento (ou retorna dict vazio)."""
+    meta_path = METADATA_DIR / f"{slug}.json"
+    if meta_path.exists():
+        return json.loads(meta_path.read_text(encoding="utf-8"))
+    return {}
+
+
 def load_all_documents() -> list[dict]:
     """Carrega e parseia todos os documentos markdown."""
     slug_url_map = build_slug_url_map()
@@ -216,5 +226,7 @@ def load_all_documents() -> list[dict]:
     for filepath in md_files:
         slug = filepath.stem
         url = slug_url_map.get(slug, f"{BASE_URL}/{slug}")
-        documents.append(parse_markdown(filepath, slug, url))
+        doc = parse_markdown(filepath, slug, url)
+        doc["metadata"] = load_metadata(slug)
+        documents.append(doc)
     return documents

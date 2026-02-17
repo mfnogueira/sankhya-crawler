@@ -3,6 +3,7 @@ import { isOnTopic } from "../guardrails/topic.js";
 import { getFromCache, setInCache } from "../services/cache.js";
 import { askWithContext } from "../services/openai.js";
 import { searchSections } from "../services/qdrant.js";
+import { rerankSections } from "../services/reranker.js";
 
 const router = Router();
 
@@ -35,10 +36,10 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // 3. Busca vetorial no Qdrant
-    const sections = await searchSections(trimmed);
+    // 3. Busca híbrida no Qdrant (dense + sparse + RRF, top-20)
+    const candidates = await searchSections(trimmed);
 
-    if (!sections.length) {
+    if (!candidates.length) {
       return res.json({
         answer:
           "Não encontrei informações relevantes na documentação sobre esse tema.",
@@ -47,10 +48,13 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // 4. Gerar resposta com GPT-4o-mini
+    // 4. Re-ranking com cross-encoder (top-20 → top-5)
+    const sections = await rerankSections(trimmed, candidates);
+
+    // 5. Gerar resposta com GPT-4o-mini
     const answer = await askWithContext(trimmed, sections);
 
-    // Montar sources únicos
+    // Montar sources únicos com metadados enriquecidos
     const seen = new Set();
     const sources = sections
       .filter((s) => {
@@ -63,11 +67,15 @@ router.post("/", async (req, res) => {
         title: `${s.doc_title} — ${s.section_title}`,
         url: s.doc_url,
         category: s.category,
+        modulo: s.modulo,
+        tipo_conteudo: s.tipo_conteudo,
+        nivel: s.nivel,
+        tecnologias: s.tecnologias,
       }));
 
     const result = { answer, sources, cached: false };
 
-    // 5. Salvar no cache
+    // 6. Salvar no cache
     setInCache(trimmed, { answer, sources });
 
     return res.json(result);
