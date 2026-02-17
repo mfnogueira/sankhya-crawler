@@ -6,8 +6,6 @@ const FUSION_LIMIT = 10;
 const EMBEDDING_SERVICE_URL =
   process.env.EMBEDDING_SERVICE_URL || "http://localhost:8000";
 
-console.log("[qdrant.js] versao 2 carregada - results.points.map fix");
-
 const qdrant = new QdrantClient({
   url: process.env.QDRANT_URL,
   apiKey: process.env.QDRANT_API_KEY,

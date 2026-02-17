@@ -33,4 +33,24 @@ export async function askWithContext(question, contextSections) {
   return response.choices[0].message.content;
 }
 
+export async function streamWithContext(question, contextSections) {
+  const contextText = contextSections
+    .map((s) => `### ${s.doc_title} — ${s.section_title}\n${s.text}`)
+    .join("\n\n---\n\n");
+
+  return openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    temperature: 0.1,
+    max_tokens: 2048,
+    stream: true,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: `<contexto>\n${contextText}\n</contexto>\n\nPergunta: ${question}`,
+      },
+    ],
+  });
+}
+
 export { openai };

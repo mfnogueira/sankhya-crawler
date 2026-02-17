@@ -175,6 +175,25 @@
     .typing span:nth-child(2) { animation-delay: 0.2s; }
     .typing span:nth-child(3) { animation-delay: 0.4s; }
 
+    .streaming-text {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background: #64748b;
+      margin-left: 1px;
+      vertical-align: text-bottom;
+      animation: blink 0.8s step-end infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
     @keyframes bounce {
       0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
       40% { transform: scale(1); opacity: 1; }
@@ -392,6 +411,57 @@
       return text;
     }
 
+    function createStreamingBubble() {
+      if (welcome) welcome.remove();
+
+      const div = document.createElement('div');
+      div.className = 'message assistant';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.textContent = 'S';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+
+      const textEl = document.createElement('span');
+      textEl.className = 'streaming-text';
+
+      const cursor = document.createElement('span');
+      cursor.className = 'cursor';
+
+      bubble.appendChild(textEl);
+      bubble.appendChild(cursor);
+      div.appendChild(avatar);
+      div.appendChild(bubble);
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+
+      return { div, bubble, textEl, cursor };
+    }
+
+    function finalizeStreamingBubble(elements, fullText, sources, cached) {
+      const { bubble, cursor } = elements;
+      cursor.remove();
+
+      let html = parseMarkdown(fullText);
+
+      if (cached) {
+        html += '<span class="cached-badge">cache</span>';
+      }
+
+      if (sources && sources.length) {
+        html += '<div class="sources"><strong>Fontes:</strong><br>';
+        sources.forEach(s => {
+          html += `<a href="${s.url}" target="_blank">${s.title}</a><br>`;
+        });
+        html += '</div>';
+      }
+
+      bubble.innerHTML = html;
+      chat.scrollTop = chat.scrollHeight;
+    }
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const question = input.value.trim();
@@ -409,16 +479,68 @@
           body: JSON.stringify({ question }),
         });
 
-        const data = await res.json();
-        removeTyping();
+        const contentType = res.headers.get('content-type') || '';
 
-        if (res.ok) {
-          addMessage('assistant', data.answer, {
+        if (!res.ok && !contentType.includes('text/event-stream')) {
+          // Erro antes do SSE (guardrail, validação)
+          removeTyping();
+          const data = await res.json();
+          const msgEl = addMessage('assistant', data.message || 'Erro ao processar sua pergunta.', {});
+          msgEl.querySelector('.bubble').classList.add('error-bubble');
+          sendBtn.disabled = false;
+          input.focus();
+          return;
+        }
+
+        if (contentType.includes('text/event-stream')) {
+          removeTyping();
+          const elements = createStreamingBubble();
+          let fullText = '';
+          let sources = [];
+          let cached = false;
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              try {
+                const event = JSON.parse(line.slice(6));
+
+                if (event.type === 'token') {
+                  fullText += event.content;
+                  elements.textEl.textContent = fullText;
+                  chat.scrollTop = chat.scrollHeight;
+                } else if (event.type === 'sources') {
+                  sources = event.sources || [];
+                  cached = event.cached || false;
+                } else if (event.type === 'done') {
+                  finalizeStreamingBubble(elements, fullText, sources, cached);
+                } else if (event.type === 'error') {
+                  elements.cursor.remove();
+                  elements.bubble.classList.add('error-bubble');
+                  elements.bubble.textContent = event.message || 'Erro ao processar sua pergunta.';
+                }
+              } catch {}
+            }
+          }
+        } else {
+          // Fallback JSON (não deve ocorrer em operação normal)
+          removeTyping();
+          const data = await res.json();
+          addMessage('assistant', data.answer || data.message || 'Resposta vazia.', {
             sources: data.sources,
             cached: data.cached,
           });
-        } else {
-          addMessage('assistant', data.message || 'Erro ao processar sua pergunta.', {});
         }
       } catch (err) {
         removeTyping();
