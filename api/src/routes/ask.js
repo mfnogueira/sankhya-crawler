@@ -84,6 +84,7 @@ router.post("/", async (req, res) => {
     return res.status(500).json({
       error: "internal_error",
       message: "Erro interno ao processar sua pergunta.",
+      debug: err.message,
     });
   }
 });
