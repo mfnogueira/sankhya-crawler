@@ -152,26 +152,28 @@ cd api && npm install && npm run dev
 
 Respostas cacheadas em memória (TTL de 1 hora) usando hash MD5 da pergunta normalizada. Perguntas repetidas não consomem tokens.
 
-## Deploy no Render
+## Deploy em produção
 
-### Embedding Service (Web Service com Docker)
+### Embedding Service → Hugging Face Spaces (gratuito, 16GB RAM)
 
-1. Criar novo **Web Service** no Render
-2. Conectar o repositório
-3. Configurar **Root Directory:** `embedding_service`
-4. **Environment:** Docker
-5. **Instance Type:** mínimo 4GB RAM (os modelos consomem ~3-4GB)
-6. Deploy
+O embedding service requer ~3.5GB de RAM (bge-m3 + bge-reranker-v2-m3), tornando o tier gratuito do **Hugging Face Spaces** a melhor opção sem custo.
 
-### API Node.js (Web Service)
+Guia completo: [docs/HUGGINGFACE_SPACES.md](docs/HUGGINGFACE_SPACES.md)
 
-1. Criar novo **Web Service** no Render
-2. Conectar o repositório
-3. Configurar **Root Directory:** `api`
-4. **Build Command:** `npm install`
-5. **Start Command:** `node src/index.js`
-6. **Environment Variables:**
+Resumo:
+1. Criar Space em [huggingface.co/new-space](https://huggingface.co/new-space) com SDK **Docker**
+2. Copiar `embedding_service/main.py`, `models.py` e `Dockerfile` para o Space
+3. Fazer push — o build baixa e pré-carrega os modelos (~15-30min na primeira vez)
+4. URL do serviço: `https://seu-usuario-sankhya-embedding.hf.space`
+
+### API Node.js → Vercel
+
+1. Conectar o repositório no [Vercel](https://vercel.com/)
+2. **Framework Preset:** Other
+3. **Root Directory:** deixar vazio (o `vercel.json` na raiz cuida do roteamento)
+4. **Environment Variables:**
    - `QDRANT_URL` — URL do Qdrant Cloud
    - `QDRANT_API_KEY` — API key do Qdrant
    - `OPENAI_API_KEY` — API key da OpenAI
-   - `EMBEDDING_SERVICE_URL` — URL interna do embedding service no Render
+   - `EMBEDDING_SERVICE_URL` — URL do Space (ex: `https://seu-usuario-sankhya-embedding.hf.space`)
+5. Deploy — Vercel redeploya automaticamente a cada push no `main`
